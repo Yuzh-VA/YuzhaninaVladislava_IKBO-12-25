@@ -1,0 +1,8 @@
+# Тестовый стартовый скрипт
+
+ls
+ls -la
+cd /home
+conf-dump
+
+ls /tmp
