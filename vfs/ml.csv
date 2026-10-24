@@ -1,0 +1,8 @@
+type,path,content
+dir,/, 
+dir,/a, 
+dir,/a/b, 
+dir,/a/b/c, 
+file,/a/b/c/deep.txt,deep file
+file,/a/b/mid.txt,mid file
+file,/a/top.txt,top file

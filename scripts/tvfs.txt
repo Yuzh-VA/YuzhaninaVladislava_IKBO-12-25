@@ -1,0 +1,6 @@
+# Проверяем загрузку VFS и параметры
+
+conf-dump
+ls
+cd /home
+conf-dump

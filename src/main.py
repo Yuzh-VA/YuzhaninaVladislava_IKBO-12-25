@@ -2,6 +2,13 @@
 import tkinter as tk
 from tkinter import scrolledtext
 import argparse
+
+import argparse
+import tkinter as tk
+from tkinter import scrolledtext
+from pathlib import Path
+
+from vfs import VirtualFileSystem
 # шаблон
 class ShellEmulator:
     def __init__(self, root, vfs_path=None, script_path=None):
@@ -19,6 +26,20 @@ class ShellEmulator:
         self.entry.bind("<Return>", self.execute) 
         self.print_prompt()
         
+        # создаем VFS и загружаем из файла
+        self.vfs = VirtualFileSystem()
+        if vfs_path:
+            try:
+                self.vfs.load_from_csv(vfs_path)
+                self.vfs_name = Path(vfs_path).stem
+                self.root.title(f"VFS: {self.vfs_name}")
+            except FileNotFoundError as e:
+                self.output.insert(tk.END, f"Error: {e}\n")
+            except ValueError as e:
+                self.output.insert(tk.END, f"Error: invalid VFS format — {e}\n")
+
+        self.print_prompt()
+
     def print_prompt(self):
         self.output.insert(tk.END, f"{self.vfs_name}$ ")
         self.output.see(tk.END)
@@ -57,10 +78,11 @@ class ShellEmulator:
 
     
     def cmd_conf_dump(self):
-        """Выводит параметры эмулятора в формате ключ-значение."""
+        # Выводит параметры эмулятора в формате ключ-значение.
         self.output.insert(tk.END, f"vfs_name = {self.vfs_name}\n")
         self.output.insert(tk.END, f"vfs_path = {self.vfs_path}\n")
         self.output.insert(tk.END, f"script_path = {self.script_path}\n")
+        self.output.insert(tk.END, f"vfs_loaded = {self.vfs is not None}\n")
         
 def parse_args():
     parser = argparse.ArgumentParser(description="Эмулятор командной оболочки")

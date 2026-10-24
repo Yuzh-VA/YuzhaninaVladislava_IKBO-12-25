@@ -1,0 +1,12 @@
+type,path,content
+dir,/, 
+dir,/home, 
+dir,/home/user, 
+file,/home/user/readme.txt,its VFS!
+file,/home/user/notes.txt,"Line1
+Line2
+Line3"
+dir,/etc, 
+file,/etc/config.ini,key=value
+dir,/tmp, 
+file,/tmp/log.txt,log entry 1

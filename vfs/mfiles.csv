@@ -1,0 +1,4 @@
+type,path,content
+dir,/, 
+file,/a.txt,aaa
+file,/b.txt,bbb
