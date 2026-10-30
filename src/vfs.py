@@ -124,6 +124,24 @@ class VirtualFileSystem:
             total += self._get_node_size(child)
         return total
 
+    def touch(self, path):
+        # создает пустой файл
+        if self.exists(path):
+            node = self._resolve(path)
+            if node.is_dir:
+                raise IsADirectoryError(f"Is a directory: {path}")
+            return  # файл уже есть — ничего не делаем
+        
+        parent_path = "/".join(path.split("/")[:-1]) or "/"
+        name = path.split("/")[-1]
+        parent = self._resolve(parent_path)
+        if parent is None:
+            raise FileNotFoundError(f"No such file or directory: {parent_path}")
+        if not parent.is_dir:
+            raise NotADirectoryError(f"Not a directory: {parent_path}")
+        
+        parent.children[name] = VFSNode(name, is_dir=False, content="")
+
     def _get_node_size(self, node):
         #размер узла
         if not node.is_dir:

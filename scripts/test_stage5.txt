@@ -1,0 +1,8 @@
+# 5 этап test
+ls
+touch /home/user/newfile.txt
+ls /home/user
+touch /home
+touch /nonexistent/file.txt
+vfs-init
+ls

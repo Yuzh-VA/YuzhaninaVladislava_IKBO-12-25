@@ -77,10 +77,22 @@ class ShellEmulator:
             self.cmd_du(args)
         elif cmd == "conf-dump":
             self.cmd_conf_dump()
+        elif cmd == "touch":
+            self.cmd_touch(args)
+        elif cmd == "vfs-init":
+            self.cmd_vfs_init()
         else:
             self.output.insert(tk.END, f"Error: unknown command '{cmd}'\n")
         self.print_prompt()
 
+    
+    def cmd_vfs_init(self):
+        # заменяет текущую VFS на VFS по умолчанию
+        self.vfs = VirtualFileSystem()
+        self.vfs_name = "default_vfs"
+        self.root.title(f"VFS: {self.vfs_name}")
+        self.cwd = "/"
+        self.output.insert(tk.END, "VFS has been reset to default.\n")
     
     def cmd_conf_dump(self):
         #выводит параметры эмулятора как ключ-значение
@@ -191,6 +203,21 @@ class ShellEmulator:
             self.output.insert(tk.END, f"{size}\t{display_name}\n")
         except Exception as e:
             self.output.insert(tk.END, f"du: error: {e}\n")
+        
+    def cmd_touch(self, args):
+        # создает пустой файл
+        if not args:
+            self.output.insert(tk.END, "touch: missing file operand\n")
+            return
+        target = self._resolve_path(args[0])
+        try:
+            self.vfs.touch(target)
+        except IsADirectoryError:
+            self.output.insert(tk.END, f"touch: cannot touch '{args[0]}': Is a directory\n")
+        except FileNotFoundError:
+            self.output.insert(tk.END, f"touch: cannot touch '{args[0]}': No such file or directory\n")
+        except Exception as e:
+            self.output.insert(tk.END, f"touch: error: {e}\n")
         
         
 def parse_args():
