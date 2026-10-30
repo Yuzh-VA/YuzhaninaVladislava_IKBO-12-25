@@ -3,9 +3,6 @@ import tkinter as tk
 from tkinter import scrolledtext
 import argparse
 
-import argparse
-import tkinter as tk
-from tkinter import scrolledtext
 from pathlib import Path
 
 from vfs import VirtualFileSystem
@@ -17,6 +14,8 @@ class ShellEmulator:
         self.vfs_path = vfs_path
         self.script_path = script_path
         self.root.title(f"VFS: {self.vfs_name}")
+        
+        self.cwd = "/"
 # поле вывода
         self.output = scrolledtext.ScrolledText(root, height=25, width=100)
         self.output.pack(padx=10, pady=10)
@@ -25,6 +24,7 @@ class ShellEmulator:
         self.entry.pack(padx=10, pady=(0, 10))
         self.entry.bind("<Return>", self.execute) 
         self.print_prompt()
+        
         
         # создаем VFS и загружаем из файла
         self.vfs = VirtualFileSystem()
@@ -41,7 +41,9 @@ class ShellEmulator:
         self.print_prompt()
 
     def print_prompt(self):
-        self.output.insert(tk.END, f"{self.vfs_name}$ ")
+        
+        prompt = f"{self.vfs_name}:{self.cwd}$ "
+        self.output.insert(tk.END, prompt)
         self.output.see(tk.END)
 # метода по кнопке Enter для чтения строки ее очищения, дублирование введенной строки
     def execute(self,event):
@@ -66,23 +68,130 @@ class ShellEmulator:
         if cmd == "exit":
             self.root.quit()
         elif cmd == "ls":
-            self.output.insert(tk.END, f"ls called with args: {args}\n")
+            self.cmd_ls(args)
         elif cmd == "cd":
-            self.output.insert(tk.END, f"cd called with args: {args}\n")
+            self.cmd_cd(args)
+        elif cmd == "wc":
+            self.cmd_wc(args)
+        elif cmd == "du":
+            self.cmd_du(args)
         elif cmd == "conf-dump":
             self.cmd_conf_dump()
         else:
             self.output.insert(tk.END, f"Error: unknown command '{cmd}'\n")
-
         self.print_prompt()
 
     
     def cmd_conf_dump(self):
-        # Выводит параметры эмулятора в формате ключ-значение.
+        #выводит параметры эмулятора как ключ-значение
         self.output.insert(tk.END, f"vfs_name = {self.vfs_name}\n")
         self.output.insert(tk.END, f"vfs_path = {self.vfs_path}\n")
         self.output.insert(tk.END, f"script_path = {self.script_path}\n")
         self.output.insert(tk.END, f"vfs_loaded = {self.vfs is not None}\n")
+        
+
+    def _resolve_path(self, path):
+        #превращает относительный путь в абсолютный внутри VFS
+        if not path:
+            return self.cwd
+        if path.startswith("/"):
+            return path  # уже абсолютный
+        
+        #склеиваем текущую директорию и относительный путь
+        if self.cwd == "/":
+            return f"/{path}"
+        return f"{self.cwd.rstrip('/')}/{path}"
+
+
+    def cmd_ls(self, args):
+        #выводит содержимое директории
+        # Если передан аргумент смотрим в него или в текущую
+        target = self._resolve_path(args[0]) if args else self.cwd
+
+        if not self.vfs.exists(target):
+            self.output.insert(tk.END, f"ls: cannot access '{target}': No such file or directory\n")
+            return
+
+        if not self.vfs.is_dir(target):
+            #если это файл просто выводим его имя
+            self.output.insert(tk.END, f"{target.split('/')[-1]}\n")
+            return
+
+        try:
+            items = self.vfs.list_dir(target)
+            if not items:
+                return  #пустая папка ничего не выводим
+            for item in items:
+                #папка это или файл чтобы добавить /
+                item_path = self._resolve_path(item) if target == "/" else f"{target.rstrip('/')}/{item}"
+                is_dir = self.vfs.is_dir(item_path)
+                suffix = "/" if is_dir else ""
+                self.output.insert(tk.END, f"{item}{suffix}\n")
+        except Exception as e:
+            self.output.insert(tk.END, f"ls: error: {e}\n")
+
+
+    def cmd_cd(self, args):
+        if not args:
+            self.cwd = "/"  # cd без аргументов в корень
+            return
+
+        target = self._resolve_path(args[0])
+
+        if not self.vfs.exists(target):
+            self.output.insert(tk.END, f"cd: no such file or directory: {args[0]}\n")
+            return
+        if not self.vfs.is_dir(target):
+            self.output.insert(tk.END, f"cd: not a directory: {args[0]}\n")
+            return
+
+        #убираем двойные слеши и добавляем /
+        self.cwd = "/" + "/".join([p for p in target.split("/") if p])
+
+
+    def cmd_wc(self, args):
+        #считает строки слова и символы в файле
+        if not args:
+            self.output.insert(tk.END, "wc: missing file operand\n")
+            return
+
+        target = self._resolve_path(args[0])
+        if not self.vfs.exists(target):
+            self.output.insert(tk.END, f"wc: {args[0]}: No such file or directory\n")
+            return
+        if self.vfs.is_dir(target):
+            self.output.insert(tk.END, f"wc: {args[0]}: Is a directory\n")
+            return
+
+        try:
+            content = self.vfs.read_file(target)
+            lines = content.splitlines()
+            line_count = len(lines)
+            word_count = len(content.split())
+            char_count = len(content)
+            self.output.insert(
+                tk.END, 
+                f"{line_count:>5} {word_count:>5} {char_count:>5} {args[0]}\n"
+            )
+        except Exception as e:
+            self.output.insert(tk.END, f"wc: error: {e}\n")
+
+
+    def cmd_du(self, args):
+        #размер файла
+        target = self._resolve_path(args[0]) if args else self.cwd
+
+        if not self.vfs.exists(target):
+            self.output.insert(tk.END, f"du: cannot access '{args[0] if args else target}': No such file or directory\n")
+            return
+
+        try:
+            size = self.vfs.get_size(target)
+            display_name = args[0] if args else "."
+            self.output.insert(tk.END, f"{size}\t{display_name}\n")
+        except Exception as e:
+            self.output.insert(tk.END, f"du: error: {e}\n")
+        
         
 def parse_args():
     parser = argparse.ArgumentParser(description="Эмулятор командной оболочки")
@@ -121,7 +230,4 @@ def main():
         
 # работа окна
 if __name__ == "__main__":
-    # root = tk.Tk()
-    # app = ShellEmulator(root)
-    # root.mainloop()  
     main()

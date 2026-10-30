@@ -1,0 +1,26 @@
+# Тестовый скрипт для этапа 4
+# Проверяем ls, cd, wc, du и обработку ошибок
+
+ls
+ls /home
+ls /home/user
+
+cd /home
+ls
+cd user
+ls
+
+wc /home/user/notes.txt
+wc /home/user/readme.txt
+du /home/user/notes.txt
+du /home
+
+# тестируем ошибки
+cd /nonexistent
+ls /nonexistent
+wc /nonexistent.txt
+du /nonexistent
+
+# возвращаемся в корень
+cd /
+ls

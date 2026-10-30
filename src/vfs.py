@@ -70,3 +70,65 @@ class VirtualFileSystem:
         if node_type == "file":
             current.is_dir = False
             current.content = content
+    
+    def _resolve(self, path):
+        #  узел по пути или None
+        if not path or path == "/":
+            return self.root
+        parts = [p for p in path.split("/") if p]
+        current = self.root
+        for part in parts:
+            if part not in current.children:
+                return None
+            current = current.children[part]
+        return current
+
+    def exists(self, path):
+        return self._resolve(path) is not None
+
+    def is_dir(self, path):
+        node = self._resolve(path)
+        return node is not None and node.is_dir
+
+    def list_dir(self, path):
+        node = self._resolve(path)
+        if node is None:
+            raise FileNotFoundError(f"No such directory: {path}")
+        if not node.is_dir:
+            raise NotADirectoryError(f"Not a directory: {path}")
+        return sorted(node.children.keys())
+
+    def read_file(self, path):
+        node = self._resolve(path)
+        if node is None:
+            raise FileNotFoundError(f"No such file: {path}")
+        if node.is_dir:
+            raise IsADirectoryError(f"Is a directory: {path}")
+        return node.content
+
+    
+    
+    def get_size(self, path):
+        # возвращает размер файла или суммарный размер папки
+        node = self._resolve(path)
+        if node is None:
+            raise FileNotFoundError(f"No such file or directory: {path}")
+
+        if not node.is_dir:
+            #размер файла
+            return len(node.content.encode("utf-8"))
+
+        #если это папка суммируем размеры всех детей
+        total = 0
+        for child in node.children.values():
+            total += self._get_node_size(child)
+        return total
+
+    def _get_node_size(self, node):
+        #размер узла
+        if not node.is_dir:
+            return len(node.content.encode("utf-8"))
+        total = 0
+        for child in node.children.values():
+            total += self._get_node_size(child)
+        return total
